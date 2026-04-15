@@ -1,0 +1,18 @@
+### JetBrains (IntelliJ / PyCharm) ###
+# Cały folder z ustawieniami projektu
+.idea/
+
+# Pliki modułów
+*.iml
+*.iws
+*.ipr
+
+# Pliki tymczasowe i logi
+cmake-build-*/
+.navigation/
+
+# Jeśli używasz dodatkowych wtyczek
+out/
+gen/
+
+images/
