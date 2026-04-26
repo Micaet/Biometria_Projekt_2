@@ -45,7 +45,7 @@ class BiometriaApp:
         self.btn_process.grid(row=0, column=2, padx=5)
 
         tk.Label(self.frame_top, text="Próg:").grid(row=0, column=3, padx=(15, 2))
-        self.threshold_var = tk.DoubleVar(value=0.4009) # taki wyszedl optymalny
+        self.threshold_var = tk.DoubleVar(value=0.2509)
         self.threshold_entry = tk.Entry(
             self.frame_top, textvariable=self.threshold_var, width=6
         )
@@ -74,7 +74,7 @@ class BiometriaApp:
         self.flat_right = None
 
         self.used_freq = 0.2892
-        self.used_treshold = 0.4009
+        self.used_treshold = 0.2509
 
     def load_image(self, side):
         path = filedialog.askopenfilename(
@@ -145,7 +145,7 @@ class BiometriaApp:
         return flat
 
 
-    def check_iris(self, flat_left, flat_right, threshold=0.4009):
+    def check_iris(self, flat_left, flat_right, threshold=0.3009):
         for w in self.frame_result.winfo_children():
             w.destroy()
 
@@ -386,8 +386,7 @@ class BiometriaApp:
         for i in range(bands):
             band = flat[i * bh:(i + 1) * bh, :]
 
-            band = band[2:-2, :] # usuwamy czesc oka, by zmruzenie oka miało mniejszy efekt
-
+            band = band[2:-2, :]
             code = BiometriaApp.encode_band(band, freq, convolve_maker)
             full_code.append(code)
 
@@ -404,8 +403,14 @@ class BiometriaApp:
 
     @staticmethod
     def hamming_distance(c1, c2):
-        min_len = min(len(c1), len(c2))
-        return np.sum(c1[:min_len] != c2[:min_len]) / min_len
+        best_hd = 1.0
+        for shift in range(-8, 9, 2):
+            shifted_c2 = np.roll(c2, shift)
+            dist = np.sum(c1 != shifted_c2) / len(c1)
+            if dist < best_hd:
+                best_hd = dist
+
+        return best_hd
 
     @staticmethod
     def reflect_pad(matrix, pad_h, pad_w):
