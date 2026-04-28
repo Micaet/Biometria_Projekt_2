@@ -3,7 +3,7 @@ import cv2
 import numpy as np
 
 
-def unwrap_iris(img, cx, cy, r_pupil, r_iris, size_out=(360, 60)):
+def unwrap_iris(img, cx, cy, r_pupil, r_iris, size_out=(360, 70)):
 
     width, height = size_out
     theta = np.linspace(0, 2 * np.pi, width)
@@ -39,7 +39,7 @@ def process_eye_projections_pro(image_path, xp_pupil=0.2):
     proj_h_p = np.sum(mask_pupil, axis=1)
 
     if np.max(proj_v_p) == 0 or np.max(proj_h_p) == 0:
-        return img, mask_pupil, np.zeros_like(gray), img, np.zeros((60, 360, 3), dtype=np.uint8)
+        return img, mask_pupil, np.zeros_like(gray), img, np.zeros((70, 360, 3), dtype=np.uint8)
 
     cx = np.argmax(proj_v_p)
     cy = np.argmax(proj_h_p)

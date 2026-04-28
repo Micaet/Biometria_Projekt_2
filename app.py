@@ -88,16 +88,13 @@ class BiometriaApp:
         if side == "left":
             self.img1_path = path
             self.label_left.config(text=f"Lewe: {filename}")
-            print("Lewe:", filename)
 
         elif side == "right":
             self.img2_path = path
             self.label_right.config(text=f"Prawe: {filename}")
-            print("Prawe:", filename)
 
     def process_images(self):
         if not self.img1_path or not self.img2_path:
-            print("Wgraj oba obrazy")
             return
 
         for widget in self.left_col.winfo_children():
@@ -378,6 +375,11 @@ class BiometriaApp:
     @staticmethod
     def iris_code(flat, freq, convolve_maker):
         h, w = flat.shape[:2]
+
+        crop = 5 # dobraliśmy eksperymentalnie
+        flat = flat[crop:h - crop, :] # usuwamy niedoskonałości w spłaszczaniu i kawałek powieki
+        h = flat.shape[0]
+
         bands = 8
         bh = h // bands
 
@@ -386,7 +388,6 @@ class BiometriaApp:
         for i in range(bands):
             band = flat[i * bh:(i + 1) * bh, :]
 
-            band = band[2:-2, :]
             code = BiometriaApp.encode_band(band, freq, convolve_maker)
             full_code.append(code)
 
