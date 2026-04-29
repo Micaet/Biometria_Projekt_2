@@ -4,11 +4,13 @@ import numpy as np
 
 
 def unwrap_iris(img, cx, cy, r_pupil, r_iris, size_out=(360, 70)):
-
     width, height = size_out
-    theta = np.linspace(0, 2 * np.pi, width)
-    r_vars = np.linspace(0, 1, height)
 
+    theta_right = np.linspace(np.radians(-30), np.radians(80), width // 2)
+    theta_left = np.linspace(np.radians(100), np.radians(230), width // 2)
+    theta = np.concatenate([theta_right, theta_left])
+
+    r_vars = np.linspace(0.05, 0.85, height)
 
     map_x = np.zeros((height, width), dtype=np.float32)
     map_y = np.zeros((height, width), dtype=np.float32)
@@ -20,8 +22,13 @@ def unwrap_iris(img, cx, cy, r_pupil, r_iris, size_out=(360, 70)):
             map_y[i, j] = cy + r_current * np.sin(theta[j])
 
     unwrapped = cv2.remap(img, map_x, map_y, cv2.INTER_LINEAR)
-    return unwrapped
 
+    if len(unwrapped.shape) == 3:
+        unwrapped = cv2.cvtColor(unwrapped, cv2.COLOR_BGR2GRAY)
+    clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
+    unwrapped = clahe.apply(unwrapped.astype(np.uint8))
+
+    return unwrapped
 
 def process_eye_projections_pro(image_path, xp_pupil=0.2):
     img = cv2.imread(image_path)
@@ -39,7 +46,7 @@ def process_eye_projections_pro(image_path, xp_pupil=0.2):
     proj_h_p = np.sum(mask_pupil, axis=1)
 
     if np.max(proj_v_p) == 0 or np.max(proj_h_p) == 0:
-        return img, mask_pupil, np.zeros_like(gray), img, np.zeros((70, 360, 3), dtype=np.uint8)
+        return img, mask_pupil, np.zeros_like(gray), img, np.zeros((120, 360, 3), dtype=np.uint8)
 
     cx = np.argmax(proj_v_p)
     cy = np.argmax(proj_h_p)
@@ -67,7 +74,7 @@ def process_eye_projections_pro(image_path, xp_pupil=0.2):
         if dist > r_pupil:
             r_iris = int(r_pupil * 2.8)
     else:
-        r_iris = int(r_pupil * 2.8)
+        r_iris = int(r_pupil * 2.5)
 
     unwrapped = unwrap_iris(img, cx, cy, r_pupil, r_iris)
 

@@ -80,7 +80,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Generuj kody tęczówek dla train-subset.")
     parser.add_argument("--train_dir",      default="train-subset", help="Ścieżka do train-subset/")
     parser.add_argument("--output_dir",     default="iris_codes",   help="Folder wyjściowy na kody")
-    parser.add_argument("--freq",           type=float, default=0.1, help="Częstotliwość Gabora (domyślnie 0.1)")
+    parser.add_argument("--freq",           type=float, default=0.2892, help="Częstotliwość Gabora ")
     parser.add_argument("--convolve_maker", default="scipy",         help="'scipy' lub 'custom'")
     args = parser.parse_args()
 

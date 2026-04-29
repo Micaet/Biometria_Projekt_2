@@ -45,7 +45,7 @@ class BiometriaApp:
         self.btn_process.grid(row=0, column=2, padx=5)
 
         tk.Label(self.frame_top, text="Próg:").grid(row=0, column=3, padx=(15, 2))
-        self.threshold_var = tk.DoubleVar(value=0.2509)
+        self.threshold_var = tk.DoubleVar(value=0.401)
         self.threshold_entry = tk.Entry(
             self.frame_top, textvariable=self.threshold_var, width=6
         )
@@ -74,7 +74,7 @@ class BiometriaApp:
         self.flat_right = None
 
         self.used_freq = 0.2892
-        self.used_treshold = 0.2509
+        self.used_treshold = 0.401
 
     def load_image(self, side):
         path = filedialog.askopenfilename(
@@ -141,50 +141,47 @@ class BiometriaApp:
 
         return flat
 
-
-    def check_iris(self, flat_left, flat_right, threshold=0.3009):
+    def check_iris(self, flat_left, flat_right, threshold=0.401):
         for w in self.frame_result.winfo_children():
             w.destroy()
 
         db = self._load_code_database()
         if not db:
-            tk.Label(
-                self.frame_result,
-                text=f"Brak bazy kodów w 'iris_codes/', uruchom create_iris_records.py",
-                fg="red"
-            ).pack()
             return
 
         query_left = BiometriaApp.iris_code(flat_left, self.used_freq, self.convolve_maker)
         query_right = BiometriaApp.iris_code(flat_right, self.used_freq, self.convolve_maker)
 
-        best_person = None
-        best_hd = float("inf")
-        best_hd_l = None
-        best_hd_r = None
+        best_l_pid, best_l_val = None, float("inf")
+        best_r_pid, best_r_val = None, float("inf")
 
-        persons = set(pid for pid, _ in db.keys())
+        results = {}
 
-        for pid in persons:
-            hd_l = hd_r = None
-
+        for pid in set(pid for pid, _ in db.keys()):
+            h_l = h_r = None
             if (pid, "left") in db:
-                hd_l = BiometriaApp.hamming_distance(query_left, db[(pid, "left")])
+                h_l = BiometriaApp.hamming_distance(query_left, db[(pid, "left")])
+                if h_l < best_l_val:
+                    best_l_val, best_l_pid = h_l, pid
             if (pid, "right") in db:
-                hd_r = BiometriaApp.hamming_distance(query_right, db[(pid, "right")])
+                h_r = BiometriaApp.hamming_distance(query_right, db[(pid, "right")])
+                if h_r < best_r_val:
+                    best_r_val, best_r_pid = h_r, pid
 
-            if hd_l is not None and hd_r is not None:
-                hd_avg = (hd_l + hd_r) / 2
-            elif hd_l is not None:
-                hd_avg = hd_l
+            results[pid] = (h_l, h_r)
+
+        if best_l_pid == best_r_pid and best_l_pid is not None:
+            best_person = best_l_pid
+            best_hd = min(best_l_val, best_r_val)
+        else:
+            if best_l_val < best_r_val:
+                best_person = best_l_pid
             else:
-                hd_avg = hd_r
+                best_person = best_r_pid
+            h_l, h_r = results[best_person]
+            best_hd = min(best_l_val, best_r_val)
 
-            if hd_avg < best_hd:
-                best_hd = hd_avg
-                best_person = pid
-                best_hd_l = hd_l
-                best_hd_r = hd_r
+        best_hd_l, best_hd_r = results[best_person]
 
         match = best_hd <= threshold
         color = "green" if match else "red"
@@ -192,12 +189,13 @@ class BiometriaApp:
 
         tk.Label(
             self.frame_result,
-            text=f"Wynik: {verdict}  |  Osoba: {best_person}  |  "
-                 f"HD śr.: {best_hd:.4f}  (L: {best_hd_l:.4f}, P: {best_hd_r:.4f})  |  "
-                 f"Próg: {threshold}",
+            text=f"WYNIK: {verdict}\n"
+                 f"Osoba: {best_person}  |  Wybrany próg w UI: {threshold:.4f}\n"
+                 f"Najmniejszy próg do akceptacji tego zdjęcia: {best_hd:.4f}\n",
             fg=color,
-            font=("Helvetica", 11, "bold")
-        ).pack(pady=4)
+            font=("Helvetica", 11, "bold"),
+            justify=tk.CENTER
+        ).pack(pady=10)
 
         img_paths = self._find_person_images(best_person)
         if img_paths:
@@ -332,7 +330,7 @@ class BiometriaApp:
 
         band = (band - np.mean(band)) / (np.std(band) + 1e-5)
         sigma = 0.5 * np.pi * freq
-        ksize = 9
+        ksize = 5
 
         k_real, k_imag = BiometriaApp.gabor_kernel(ksize, freq, sigma)
 
@@ -365,12 +363,14 @@ class BiometriaApp:
 
     @staticmethod
     def greyscale(img):
-        b = img[:, :, 0]
-        g = img[:, :, 1]
-        r = img[:, :, 2]
+        if len(img.shape) == 3:
+            b = img[:, :, 0]
+            g = img[:, :, 1]
+            r = img[:, :, 2]
+            grey = 0.114 * b + 0.587 * g + 0.299 * r
+            return grey.astype(np.float32)
 
-        grey = 0.114 * b + 0.587 * g + 0.299 * r
-        return grey.astype(np.float32)
+        return img.astype(np.float32)
 
     @staticmethod
     def iris_code(flat, freq, convolve_maker):
@@ -404,12 +404,25 @@ class BiometriaApp:
 
     @staticmethod
     def hamming_distance(c1, c2):
+        num_bands = 8
+        bits_per_band = len(c1) // num_bands
         best_hd = 1.0
-        for shift in range(-8, 9, 2):
-            shifted_c2 = np.roll(c2, shift)
-            dist = np.sum(c1 != shifted_c2) / len(c1)
-            if dist < best_hd:
-                best_hd = dist
+
+        for shift in range(-40, 41, 2):
+            total_diff = 0
+            for b in range(num_bands):
+                start = b * bits_per_band
+                end = (b + 1) * bits_per_band
+
+                band1 = c1[start:end]
+                band2 = c2[start:end]
+
+                shifted_band2 = np.roll(band2, shift)
+                total_diff += np.sum(band1 != shifted_band2)
+
+            current_hd = total_diff / len(c1)
+            if current_hd < best_hd:
+                best_hd = current_hd
 
         return best_hd
 
