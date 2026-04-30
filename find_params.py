@@ -144,7 +144,7 @@ ax2.axvline(best['freq'], color='red', linestyle='--')
 ax2.grid(True)
 
 plt.tight_layout()
-plt.savefig("freq_search.png", dpi=150)
+plt.savefig("freq_search1.png", dpi=150)
 plt.show()
 
 g, imp = compute_all_scores(data, best['freq'])
@@ -168,7 +168,7 @@ plt.title(f"ROC — najlepsze freq={best['freq']:.3f}")
 plt.legend()
 plt.grid(True)
 plt.tight_layout()
-plt.savefig("roc_best.png", dpi=150)
+plt.savefig("roc_best1.png", dpi=150)
 plt.show()
 
 print(f"\nNajlepsze: freq={best['freq']:.4f}, AUC={best['auc']:.4f}, EER={best['eer']:.4f}, próg={best['threshold']:.4f}")
